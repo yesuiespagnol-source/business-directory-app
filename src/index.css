@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 
+           text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl 
+           transform hover:-translate-y-0.5 transition-all duration-200 
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none;
+  }
+  
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-6 rounded-lg 
+           border border-gray-300 shadow-sm hover:shadow-md 
+           transition-all duration-200;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl border-2 border-gray-200 
+           focus:border-primary-500 focus:ring-4 focus:ring-primary-100 
+           outline-none transition-all duration-200 bg-white/50;
+  }
+  
+  .business-card {
+    @apply glass-card p-6 hover:shadow-2xl transition-all duration-300 
+           hover:scale-[1.02] animate-slide-up;
+  }
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
