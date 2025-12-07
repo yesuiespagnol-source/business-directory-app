@@ -24,20 +24,31 @@ async function searchBusinesses(niche, city) {
                 max_tokens: 4096,
                 messages: [{
                     role: 'user',
-                    content: `Busca información sobre ${niche} en ${city}. Para cada negocio que encuentres, proporciona la siguiente información en formato JSON:
-          
+                    content: `Actúa como un asistente que busca información de negocios locales. Necesito que encuentres información sobre ${niche} en ${city}, España.
+
+Para cada negocio que encuentres, proporciona EXACTAMENTE este formato JSON (es muy importante que sea JSON válido):
+
 {
   "businesses": [
     {
-      "name": "nombre del negocio",
-      "phone": "teléfono (si está disponible)",
-      "address": "dirección completa",
-      "website": "URL de la página web (si tiene)"
+      "name": "Nombre del Negocio",
+      "phone": "teléfono con prefijo",
+      "address": "dirección completa con código postal",
+      "website": "https://www.ejemplo.com"
     }
   ]
 }
 
-Busca al menos 10-15 negocios diferentes. Si un negocio no tiene página web, omite el campo "website" o déjalo vacío. Asegúrate de que la respuesta sea un JSON válido.`
+INSTRUCCIONES IMPORTANTES:
+1. Busca al menos 15-20 negocios diferentes de ${niche} en ${city}
+2. Si un negocio NO tiene página web, omite completamente el campo "website" o pon null
+3. Si no encuentras el teléfono, pon null en "phone"
+4. Si no encuentras la dirección completa, pon null en "address"
+5. ASEGÚRATE de que el JSON sea válido (sin comas extras, comillas bien cerradas)
+6. NO agregues texto adicional fuera del JSON
+7. Busca en directorios como Google Maps, Páginas Amarillas, directorios locales, etc.
+
+Responde SOLO con el JSON, sin explicaciones adicionales.`
                 }],
             });
 
@@ -46,28 +57,41 @@ Busca al menos 10-15 negocios diferentes. Si un negocio no tiene página web, om
 
             // Try to parse JSON from the response
             try {
-                // Find JSON in the response (it might be wrapped in markdown code blocks)
-                const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    const data = JSON.parse(jsonMatch[0]);
-                    if (data.businesses && Array.isArray(data.businesses)) {
-                        data.businesses.forEach(business => {
-                            // Deduplicate by name
-                            const normalizedName = business.name.toLowerCase().trim();
-                            if (!seenNames.has(normalizedName)) {
-                                seenNames.add(normalizedName);
-                                allBusinesses.push({
-                                    name: business.name,
-                                    phone: business.phone || null,
-                                    address: business.address || null,
-                                    website: business.website || null,
-                                });
-                            }
-                        });
+                let jsonData = null;
+
+                // Strategy 1: Try to find JSON in markdown code blocks
+                const codeBlockMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+                if (codeBlockMatch) {
+                    jsonData = JSON.parse(codeBlockMatch[1]);
+                } else {
+                    // Strategy 2: Try to find raw JSON object
+                    const jsonMatch = responseText.match(/\{[\s\S]*"businesses"[\s\S]*\}/);
+                    if (jsonMatch) {
+                        jsonData = JSON.parse(jsonMatch[0]);
                     }
+                }
+
+                if (jsonData && jsonData.businesses && Array.isArray(jsonData.businesses)) {
+                    jsonData.businesses.forEach(business => {
+                        // Deduplicate by name
+                        const normalizedName = business.name.toLowerCase().trim();
+                        if (!seenNames.has(normalizedName) && business.name && business.name.length > 2) {
+                            seenNames.add(normalizedName);
+                            allBusinesses.push({
+                                name: business.name.trim(),
+                                phone: business.phone && business.phone !== 'null' ? business.phone.trim() : null,
+                                address: business.address && business.address !== 'null' ? business.address.trim() : null,
+                                website: business.website && business.website !== 'null' ? business.website.trim() : null,
+                            });
+                        }
+                    });
+                    console.log(`Found ${jsonData.businesses.length} businesses in this query`);
+                } else {
+                    console.log('No valid businesses array found in response');
                 }
             } catch (parseError) {
                 console.error('Error parsing JSON from response:', parseError);
+                console.log('Response text:', responseText.substring(0, 500));
             }
 
             // Add a small delay between requests to avoid rate limiting
