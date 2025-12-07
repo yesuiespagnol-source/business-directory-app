@@ -7,15 +7,11 @@ const anthropic = new Anthropic({
 
 // Helper function to perform multiple searches and aggregate results
 async function searchBusinesses(niche, city) {
+    // Optimized: 3 highly targeted searches for maximum results within timeout
     const searchQueries = [
-        `${niche} en ${city} directorio completo`,
-        `${niche} ${city} teléfono dirección contacto`,
-        `listado completo ${niche} ${city}`,
-        `${niche} ${city} páginas amarillas`,
-        `${niche} ${city} Google Maps`,
-        `todos los ${niche} en ${city}`,
-        `guía ${niche} ${city}`,
-        `${niche} ${city} directorio empresas`,
+        `listado completo ${niche} ${city} Google Maps directorio teléfono dirección web`,
+        `todos los ${niche} en ${city} páginas amarillas guía comercial contacto`,
+        `${niche} ${city} directorio empresas completo con datos de contacto`,
     ];
 
     const allBusinesses = [];
@@ -28,9 +24,9 @@ async function searchBusinesses(niche, city) {
                 max_tokens: 4096,
                 messages: [{
                     role: 'user',
-                    content: `Actúa como un asistente que busca información EXHAUSTIVA de negocios locales. Necesito que encuentres la MAYOR CANTIDAD POSIBLE de ${niche} en ${city}, España.
+                    content: `Actúa como un asistente experto en búsqueda EXHAUSTIVA de negocios locales. Tu misión es encontrar la MÁXIMA CANTIDAD POSIBLE de ${niche} en ${city}, España.
 
-Para cada negocio que encuentres, proporciona EXACTAMENTE este formato JSON (es muy importante que sea JSON válido):
+Para cada negocio, proporciona este formato JSON EXACTO (crucial que sea JSON válido):
 
 {
   "businesses": [
@@ -43,18 +39,18 @@ Para cada negocio que encuentres, proporciona EXACTAMENTE este formato JSON (es 
   ]
 }
 
-INSTRUCCIONES IMPORTANTES:
-1. Busca el MÁXIMO número posible de negocios de ${niche} en ${city} - intenta encontrar entre 30-50 negocios si es posible
-2. Busca en TODAS las fuentes disponibles: Google Maps, Páginas Amarillas, directorios locales, guías comerciales, etc.
-3. Si un negocio NO tiene página web, omite completamente el campo "website" o pon null
-4. Si no encuentras el teléfono, pon null en "phone"
-5. Si no encuentras la dirección completa, pon null en "address"
-6. ASEGÚRATE de que el JSON sea válido (sin comas extras, comillas bien cerradas)
-7. NO agregues texto adicional fuera del JSON
-8. Incluye negocios grandes, medianos y pequeños
-9. No te limites - quiero TODOS los ${niche} que puedas encontrar en ${city}
+INSTRUCCIONES CRÍTICAS:
+1. Busca entre 50-80 negocios de ${niche} en ${city} - NO TE LIMITES, quiero el MÁXIMO posible
+2. Fuentes prioritarias: Google Maps, Páginas Amarillas, directorios locales, guías comerciales, listados empresariales
+3. Incluye TODOS los tamaños: grandes cadenas, negocios medianos, pequeños locales, autónomos
+4. Si NO tiene web → omite "website" o pon null
+5. Si NO tiene teléfono → pon null en "phone"
+6. Si NO tiene dirección → pon null en "address"
+7. JSON VÁLIDO obligatorio (sin comas extras, comillas correctas)
+8. SOLO JSON en la respuesta, SIN texto adicional
+9. Prioridad absoluta: CANTIDAD MÁXIMA de resultados
 
-Responde SOLO con el JSON, sin explicaciones adicionales. Prioriza CANTIDAD y COMPLETITUD de resultados.`
+Responde ÚNICAMENTE con el JSON. Objetivo: encontrar TODOS los ${niche} posibles en ${city}.`
                 }],
             });
 
@@ -100,8 +96,8 @@ Responde SOLO con el JSON, sin explicaciones adicionales. Prioriza CANTIDAD y CO
                 console.log('Response text:', responseText.substring(0, 500));
             }
 
-            // Add a small delay between requests to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Reduced delay for faster execution (still avoiding rate limits)
+            await new Promise(resolve => setTimeout(resolve, 500));
 
         } catch (error) {
             console.error(`Error searching for "${query}":`, error);
