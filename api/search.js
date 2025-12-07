@@ -8,10 +8,14 @@ const anthropic = new Anthropic({
 // Helper function to perform multiple searches and aggregate results
 async function searchBusinesses(niche, city) {
     const searchQueries = [
-        `${niche} en ${city} directorio`,
-        `${niche} ${city} teléfono dirección`,
-        `listado ${niche} ${city}`,
-        `${niche} ${city} contacto`,
+        `${niche} en ${city} directorio completo`,
+        `${niche} ${city} teléfono dirección contacto`,
+        `listado completo ${niche} ${city}`,
+        `${niche} ${city} páginas amarillas`,
+        `${niche} ${city} Google Maps`,
+        `todos los ${niche} en ${city}`,
+        `guía ${niche} ${city}`,
+        `${niche} ${city} directorio empresas`,
     ];
 
     const allBusinesses = [];
@@ -24,7 +28,7 @@ async function searchBusinesses(niche, city) {
                 max_tokens: 4096,
                 messages: [{
                     role: 'user',
-                    content: `Actúa como un asistente que busca información de negocios locales. Necesito que encuentres información sobre ${niche} en ${city}, España.
+                    content: `Actúa como un asistente que busca información EXHAUSTIVA de negocios locales. Necesito que encuentres la MAYOR CANTIDAD POSIBLE de ${niche} en ${city}, España.
 
 Para cada negocio que encuentres, proporciona EXACTAMENTE este formato JSON (es muy importante que sea JSON válido):
 
@@ -40,15 +44,17 @@ Para cada negocio que encuentres, proporciona EXACTAMENTE este formato JSON (es 
 }
 
 INSTRUCCIONES IMPORTANTES:
-1. Busca al menos 15-20 negocios diferentes de ${niche} en ${city}
-2. Si un negocio NO tiene página web, omite completamente el campo "website" o pon null
-3. Si no encuentras el teléfono, pon null en "phone"
-4. Si no encuentras la dirección completa, pon null en "address"
-5. ASEGÚRATE de que el JSON sea válido (sin comas extras, comillas bien cerradas)
-6. NO agregues texto adicional fuera del JSON
-7. Busca en directorios como Google Maps, Páginas Amarillas, directorios locales, etc.
+1. Busca el MÁXIMO número posible de negocios de ${niche} en ${city} - intenta encontrar entre 30-50 negocios si es posible
+2. Busca en TODAS las fuentes disponibles: Google Maps, Páginas Amarillas, directorios locales, guías comerciales, etc.
+3. Si un negocio NO tiene página web, omite completamente el campo "website" o pon null
+4. Si no encuentras el teléfono, pon null en "phone"
+5. Si no encuentras la dirección completa, pon null en "address"
+6. ASEGÚRATE de que el JSON sea válido (sin comas extras, comillas bien cerradas)
+7. NO agregues texto adicional fuera del JSON
+8. Incluye negocios grandes, medianos y pequeños
+9. No te limites - quiero TODOS los ${niche} que puedas encontrar en ${city}
 
-Responde SOLO con el JSON, sin explicaciones adicionales.`
+Responde SOLO con el JSON, sin explicaciones adicionales. Prioriza CANTIDAD y COMPLETITUD de resultados.`
                 }],
             });
 
