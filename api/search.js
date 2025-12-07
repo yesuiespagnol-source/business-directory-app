@@ -1,107 +1,83 @@
-import Anthropic from '@anthropic-ai/sdk';
-
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-// Helper function to perform multiple searches and aggregate results
+// Helper function to search businesses using Google Places API
 async function searchBusinesses(niche, city) {
-    // Optimized: 3 highly targeted searches for maximum results within timeout
-    const searchQueries = [
-        `listado completo ${niche} ${city} Google Maps directorio teléfono dirección web`,
-        `todos los ${niche} en ${city} páginas amarillas guía comercial contacto`,
-        `${niche} ${city} directorio empresas completo con datos de contacto`,
-    ];
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+
+    if (!apiKey) {
+        throw new Error('Google Places API key not configured');
+    }
 
     const allBusinesses = [];
-    const seenNames = new Set();
+    const seenPlaceIds = new Set();
 
-    for (const query of searchQueries) {
-        try {
-            const message = await anthropic.messages.create({
-                model: 'claude-3-5-sonnet-20241022',
-                max_tokens: 4096,
-                messages: [{
-                    role: 'user',
-                    content: `Actúa como un asistente experto en búsqueda EXHAUSTIVA de negocios locales. Tu misión es encontrar la MÁXIMA CANTIDAD POSIBLE de ${niche} en ${city}, España.
+    try {
+        // Use Google Places API (New) - Text Search
+        const searchQuery = `${niche} in ${city}, Spain`;
 
-Para cada negocio, proporciona este formato JSON EXACTO (crucial que sea JSON válido):
+        console.log(`Searching Google Places for: ${searchQuery}`);
 
-{
-  "businesses": [
-    {
-      "name": "Nombre del Negocio",
-      "phone": "teléfono con prefijo",
-      "address": "dirección completa con código postal",
-      "website": "https://www.ejemplo.com"
-    }
-  ]
-}
-
-INSTRUCCIONES CRÍTICAS:
-1. Busca entre 50-80 negocios de ${niche} en ${city} - NO TE LIMITES, quiero el MÁXIMO posible
-2. Fuentes prioritarias: Google Maps, Páginas Amarillas, directorios locales, guías comerciales, listados empresariales
-3. Incluye TODOS los tamaños: grandes cadenas, negocios medianos, pequeños locales, autónomos
-4. Si NO tiene web → omite "website" o pon null
-5. Si NO tiene teléfono → pon null en "phone"
-6. Si NO tiene dirección → pon null en "address"
-7. JSON VÁLIDO obligatorio (sin comas extras, comillas correctas)
-8. SOLO JSON en la respuesta, SIN texto adicional
-9. Prioridad absoluta: CANTIDAD MÁXIMA de resultados
-
-Responde ÚNICAMENTE con el JSON. Objetivo: encontrar TODOS los ${niche} posibles en ${city}.`
-                }],
-            });
-
-            // Extract text content from the response
-            const responseText = message.content[0].text;
-
-            // Try to parse JSON from the response
-            try {
-                let jsonData = null;
-
-                // Strategy 1: Try to find JSON in markdown code blocks
-                const codeBlockMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-                if (codeBlockMatch) {
-                    jsonData = JSON.parse(codeBlockMatch[1]);
-                } else {
-                    // Strategy 2: Try to find raw JSON object
-                    const jsonMatch = responseText.match(/\{[\s\S]*"businesses"[\s\S]*\}/);
-                    if (jsonMatch) {
-                        jsonData = JSON.parse(jsonMatch[0]);
+        // Make request to Google Places API
+        const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': apiKey,
+                'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.internationalPhoneNumber,places.websiteUri,places.businessStatus'
+            },
+            body: JSON.stringify({
+                textQuery: searchQuery,
+                languageCode: 'es',
+                maxResultCount: 20, // Maximum per request
+                locationBias: {
+                    circle: {
+                        center: {
+                            latitude: city.toLowerCase() === 'madrid' ? 40.4168 :
+                                city.toLowerCase() === 'barcelona' ? 41.3851 :
+                                    city.toLowerCase() === 'valencia' ? 39.4699 :
+                                        40.4168, // Default to Madrid
+                            longitude: city.toLowerCase() === 'madrid' ? -3.7038 :
+                                city.toLowerCase() === 'barcelona' ? 2.1734 :
+                                    city.toLowerCase() === 'valencia' ? -0.3763 :
+                                        -3.7038 // Default to Madrid
+                        },
+                        radius: 50000.0 // 50km radius
                     }
                 }
+            })
+        });
 
-                if (jsonData && jsonData.businesses && Array.isArray(jsonData.businesses)) {
-                    jsonData.businesses.forEach(business => {
-                        // Deduplicate by name
-                        const normalizedName = business.name.toLowerCase().trim();
-                        if (!seenNames.has(normalizedName) && business.name && business.name.length > 2) {
-                            seenNames.add(normalizedName);
-                            allBusinesses.push({
-                                name: business.name.trim(),
-                                phone: business.phone && business.phone !== 'null' ? business.phone.trim() : null,
-                                address: business.address && business.address !== 'null' ? business.address.trim() : null,
-                                website: business.website && business.website !== 'null' ? business.website.trim() : null,
-                            });
-                        }
-                    });
-                    console.log(`Found ${jsonData.businesses.length} businesses in this query`);
-                } else {
-                    console.log('No valid businesses array found in response');
-                }
-            } catch (parseError) {
-                console.error('Error parsing JSON from response:', parseError);
-                console.log('Response text:', responseText.substring(0, 500));
-            }
-
-            // Reduced delay for faster execution (still avoiding rate limits)
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-        } catch (error) {
-            console.error(`Error searching for "${query}":`, error);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Google Places API error:', errorText);
+            throw new Error(`Google Places API error: ${response.status}`);
         }
+
+        const data = await response.json();
+
+        console.log(`Google Places returned ${data.places?.length || 0} results`);
+
+        if (data.places && Array.isArray(data.places)) {
+            data.places.forEach(place => {
+                // Skip if already seen or not operational
+                if (seenPlaceIds.has(place.id) || place.businessStatus !== 'OPERATIONAL') {
+                    return;
+                }
+
+                seenPlaceIds.add(place.id);
+
+                allBusinesses.push({
+                    name: place.displayName?.text || 'Sin nombre',
+                    phone: place.internationalPhoneNumber || null,
+                    address: place.formattedAddress || null,
+                    website: place.websiteUri || null,
+                });
+            });
+        }
+
+        console.log(`Total unique businesses found: ${allBusinesses.length}`);
+
+    } catch (error) {
+        console.error('Error searching with Google Places API:', error);
+        throw error;
     }
 
     return allBusinesses;
